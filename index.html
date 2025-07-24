@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script>
+const neighbors = [[-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]];
+const textColor = ["#707070","#0000ff","#008000","#ff0000","#000080","#800000","#008080","#000000","#808080"];
+function RandInt(min,max) { return Math.floor(Math.random() * (max - min + 1) + min); }
+/* Info                        Number to AND/OR/XOR by
+------------------------------------------------------
+bits 1-4 = bomb count (max 8)   (15 [Binary: 0001111])
+bit 5 = bomb                    (16 [Binary: 0010000])
+bit 6 = flagged                 (32 [Binary: 0100000])
+bit 7 = revealed                (64 [Binary: 1000000])
+*/
+class Minesweeper extends HTMLElement {
+  constructor(ParentElement,Width = 9,Height = 9,Bombs = 10) {
+    super(); //required before any use of "this" when extending an html element.
+    this._CellSize = 25; //The size of each cell "box" in pixels
+    this._Canvas = document.createElement('canvas'); //Create canvas element
+    this._Canvas.style.border = "1px solid black"; //give it a black border
+
+    // Callbacks
+    this._Canvas.addEventListener('pointerdown',this._HandleUserInput.bind(this)); //Needed to log buttons as pointerup doesn't show buttons, they're released...
+    this._Canvas.addEventListener('pointerup',this._HandleUserInput.bind(this));
+
+    // Embed canvas into this element, embed this element into passed "parent" element
+    this.appendChild(this._Canvas);
+    if (ParentElement instanceof HTMLElement) { ParentElement.appendChild(this); }
+
+    // Other initialization
+    this.buildGrid(Width,Height,Bombs);    
+  }
+  _HandleUserInput(e) { 
+    if (/^pointer/.test(e.type)) {
+      //Find relative (x,y) from the position of the canvas on the page
+      let rect = e.target.getBoundingClientRect() , x = e.clientX - rect.left , y = e.clientY - rect.top;
+
+      //Compute Grid (x,y)
+      let X = Math.floor(x / this._CellSize) , Y = Math.floor(y / this._CellSize), Cell = Y * this._Rows + X;
+
+      //We clicked, start the timer!
+      if (!this._Started) { this._Started = true; }
+
+      //If we see buttons, it must be a pointerdown event... log right click if e.buttons is 2
+      if (e.buttons == 2) { this._RClick = true; }
+
+      //If it's a pointerup event...
+      if (e.type == "pointerup") {
+        //If not right click and cell is not revealed and cell is not flagged and we haven't lost yet and we haven't won yet... reveal cell.
+        if (!this._RClick && !(this._Grid[Cell] & 64) && !(this._Grid[Cell] & 32) && !this._Lost && !this._Won) { this._Reveal(X,Y); }
+
+        //If right click and cell is not revealed, and we haven't lost yet and we haven't won yet, toggle flagged...
+        else if (this._RClick && !(this._Grid[Cell] & 64) && !this._Lost && !this._Won) { 
+          //Binary XOR the cell value to toggle flagged or not
+          this._Grid[Cell] = this._Grid[Cell] ^ 32; 
+
+          //If we flagged it, add it to list...
+          if (this._Grid[Cell] & 32) { this._FlagPositions.push(Cell); }
+
+          //Else, We must've unflagged it... Remove it from list...
+          else { this._FlagPositions.splice(this._FlagPositions.indexOf(Cell),1); }
+
+          //Change bomb count text to reflect based on how many flags we used.
+          document.getElementById("bombs").innerText = "Bombs: " + (this._BombPositions.length - this._FlagPositions.length);
+        }
+        //Unset the right click boolean
+        this._RClick = false;
+
+        //Draw the grid!
+        this.Render();
+      }
+    }
+  }
+  _Reveal(x,y) {
+    //If cell coordinate is within bounds
+    if ((x >= 0 && x < this._Rows) && (y >= 0 && y < this._Cols)) {
+      //set some variables to make it easer to reference some stuff by name
+      let Cell = y * this._Rows + x , CellText = this._Grid[Cell] & 15 , CellBomb = this._Grid[Cell] & 16 , CellRevealed = this._Grid[Cell] & 64;
+
+      //If not revealed
+      if (!CellRevealed) { 
+        //Binary OR it revealed, increase our reveal count
+        this._Grid[Cell] = this._Grid[Cell] | 64; 
+        this._RevealCount++;
+
+        //If we clicked a bomb...        
+        if (CellBomb) {
+          //set loser boolean to true lol
+          this._Lost = true;
+          //Show we lost
+          document.getElementById("gamestate").innerText = "You Lose!";
+        }
+
+        //Else If this not a bomb and is a blank cell (no bombs around it)
+        else if (!CellBomb && !CellText) { 
+          //Iterate over the 8 surrounding cells within a 3x3 and reveal those (the 9th is the center, the one we revealed!)
+          neighbors.forEach((neighbor) => { this._Reveal(x + neighbor[0],y + neighbor[1]); });
+        }
+      }
+    }
+  }
+  timer(ctime) {
+    //If game started and no logged start time, set it
+    if (this._Started && !this._StartTime) { this._StartTime = ctime; }
+
+    //If game ended and no end time, set it
+    if ((this._Won || this._Lost) && !this._EndTime) { this._EndTime = ctime; }
+
+    //If started, find the difference between start and now, else 0
+    let diff = (this._Started ? (this._Won || this._Lost ? this._EndTime : ctime) - this._StartTime : 0);
+
+    //format hours/mins/secs/millisecs
+    let Ctime = Math.floor(diff / 1000) , hh = Math.floor(Ctime / 3600).toString().padStart(2,0) , mm = Math.floor((Ctime % 3600) / 60).toString().padStart(2,0) , ss = Math.floor(Ctime % 60).toString().padStart(2,0) , tt = Math.floor(diff % 1000).toString().padStart(3,0);
+
+    //Update the timer element
+    document.getElementById("timer").innerText = `${hh}:${mm}:${ss}.${tt}`;
+
+    //Request new animation frame
+    requestAnimationFrame(this.timer.bind(this));
+  }
+  buildGrid(Width,Height,Bombs) {
+    //Initialize "private" properties (they're not really private but we'll prefix with "_" to pretend)
+    this._Rows = Width; //The number of Rows
+    this._Cols = Height; //The number of Columns
+    this._Canvas.width = Width * this._CellSize; //Adjust canvas width to accomidate rows
+    this._Canvas.height = Height * this._CellSize; //Adjust canvas height to accomidate columns
+    this._BombPositions = []; //Cell Indexes of where bombs are placed
+    this._FlagPositions = []; //Cell Indexes of where we flagged a potential bomb
+    this._RClick = false; //mouse right click boolean
+    this._Lost = false; //lost game boolean
+    this._Won = false; //won game boolean
+    this._Started = false; //boolean for when we start playing (for timer)
+    this._StartTime = undefined; //Holder of ctime when we start.
+    this._EndTime = undefined; //Holder of ctime when we win/lose.
+    this._RevealCount = 0; //count of revealed cells
+    this._TileCount = Width * Height; //total number of tiles
+    this._Grid = new Array(this._TileCount).fill(0,0,this._TileCount); //Blank fill grid with 0's
+
+    //Randomly place bombs into the grid, loop until all bombs are placed.
+    while (Bombs > 0) {
+      let pos = RandInt(0,this._TileCount - 1);
+      if (!this._Grid[pos]) { this._Grid[pos] = 16; this._BombPositions.push(pos); Bombs--; }
+    }
+
+    //Iterate through the grid and set the nearby bombs number to cells that are NOT bombs 
+    for (let x = 0; x < this._Grid.length; x++) {
+      let X = x % this._Rows , Y = Math.floor(x / this._Rows) , Cells = [] , CloseBombs = 0;
+
+      //If tile is not a bomb...
+      if (!(this._Grid[x] & 16)) {
+        //Fill Cells array with the 8 potential surrounding cells (neighbors)
+        neighbors.forEach((neighbor) => {
+          let neighborX = X + neighbor[0] , neighborY = Y + neighbor[1];
+          //If cell coordinate is within bounds, push it to the list
+          if ((neighborX >= 0 && neighborX < this._Rows) && (neighborY >= 0 && neighborY < this._Cols)) { Cells.push(neighborY * this._Rows + neighborX); }
+        });
+
+        //count how many surrounding cells are bombs by seeing if they're inside the bomb array
+        Cells.forEach((cell) => { if (this._BombPositions.includes(cell)) { CloseBombs++; } });
+
+        //set the bombcount to the cell
+        this._Grid[x] = CloseBombs; 
+      }
+    }
+    //Dirty cheat! Uncomment to see the grid array in your console for easy wins!
+    //for (let x = 0; x < this._Grid.length; x+= this._Rows) { console.log(this._Grid.slice(x,x+this._Rows)); }
+
+    //Set the text of some game areas
+    document.getElementById("bombs").innerText = "Bombs: " + (this._BombPositions.length - this._FlagPositions.length);
+    document.getElementById("gamestate").innerText = "Sweeping...";
+
+    //Draw the grid!
+    this.Render();
+    requestAnimationFrame(this.timer.bind(this));
+  }
+  Render() {
+    //Clear the canvas
+    this.DrawClear("#c0c0c0");
+
+    //Iterate over all grid cells
+    for (let x = 0; x < this._Rows; x++) {
+      for (let y = 0; y < this._Cols; y++) {
+        //Set some local variables to make it easier to reference stuff by a name
+        let Cell = this._Grid[y * this._Rows + x] , CellText = Cell & 15 , CellBomb = Cell & 16 , CellFlagged = Cell & 32 , CellRevealed = Cell & 64;
+
+        //draw filled rectangle (red if bomb, dark grey if revealed, light grey if not revealed)
+        this.DrawRect("f",(CellRevealed ? (CellBomb ? "red" : "#707070") : "#c0c0c0"),1,x * this._CellSize,y * this._CellSize,this._CellSize,this._CellSize)
+
+        //draw a black border around the cell
+        this.DrawRect("n","black",1,x * this._CellSize,y * this._CellSize,this._CellSize,this._CellSize)
+        
+        //If cell has been revealed (bit 7), or we lost, draw the contents
+        if (CellRevealed || this._Lost) {
+          //if it's not a bomb, go ahead and draw it
+          if (!CellBomb) { this.DrawText("n",(this._Lost && !CellRevealed && !CellText ? "#c0c0c0" : textColor[CellText]),"20px sans-serif",x * this._CellSize + 7,y * this._CellSize + 7,CellText); }
+
+          //else if it is a bomb, draw the UTF bomb instead of the number
+          else { this.DrawText("n","black","14px sans-serif",x * this._CellSize + 6,y * this._CellSize + 2,"\u{1f4a3}"); }
+        }
+        //Else if cell has been flagged (isn't revealed yet) draw the UTF flag
+        else if (CellFlagged) { this.DrawText("n","black","14px sans-serif",x * this._CellSize + 6,y * this._CellSize + 2,"\u{1f6a9}"); }
+      }
+    }
+    //If we haven't lost yet, and theres only the bombs left unrevealed...
+    if (!this._Lost && this._TileCount - this._RevealCount == this._BombPositions.length) { this._Won = true; document.getElementById("gamestate").innerText = "You Win!"; }
+
+    //Else if flagwin is enabled, we haven't lost yet, and we dropped as many flags as there are bombs
+    else if (document.getElementById("flagwin").checked && !this._Lost && this._FlagPositions.length == this._BombPositions.length) {
+      let SuccessfulFlags = 0;
+      //Count the number of bombs we marked successfully
+      this._FlagPositions.forEach((flag) => { if (this._BombPositions.includes(flag)) { SuccessfulFlags++; } });
+
+      //If we flagged all the bombs correctly, WIN!
+      if (SuccessfulFlags == this._BombPositions.length) { this._Won = true; document.getElementById("gamestate").innerText = "You Win!"; }
+    }
+  }
+
+  //Clears the entire canvas a given color
+  DrawClear(color) {
+    let Ctx = this._Canvas.getContext("2d");
+    Ctx.beginPath();
+    Ctx.rect(0,0,this._Canvas.width,this._Canvas.height);
+    Ctx.closePath();
+    Ctx.fillStyle = color;
+    Ctx.fill();
+  }
+
+  //Draws a rectanle at x,y given width/height. Note- Flags: f == fill, without it's just the outline.
+  DrawRect(flags,color,size,x,y,w,h) {
+    let Ctx = this._Canvas.getContext("2d");
+    Ctx.beginPath();
+    Ctx.rect(x,y,w,h);
+    Ctx.closePath();
+    Ctx.lineWidth = size;
+    if (flags.indexOf("f") != -1) { Ctx.fillStyle = color; Ctx.fill(); }
+    else { Ctx.strokeStyle = color; Ctx.stroke(); }
+  }
+
+  //Draws text at a given x,y
+  DrawText(flags,color,font,x,y,text) {
+    let Ctx = this._Canvas.getContext("2d") , metrics = Ctx.measureText(text) , oldFont = Ctx.font;
+    Ctx.fillStyle = color;
+    Ctx.font = font;
+    Ctx.fillText(text,x,y + (metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent) * 1.5);
+    Ctx.font = oldFont;
+  }
+}
+customElements.define('canvas-minesweeper', Minesweeper);
+
+window.addEventListener('load',() => {
+  //Block context menu (if element under the cursor is a canvas) so you can flag bombs with a right click 
+  document.addEventListener('contextmenu', (e) => { if (e.target.tagName == "CANVAS") { e.preventDefault(); } });
+
+  //Launch new game element!
+  let Game = new Minesweeper(document.getElementById("gamecontainer"),9,9,10);
+
+  //define click handlers for starting new games
+  document.getElementById("beginner").addEventListener('click',() => { Game.buildGrid(9,9,10); });
+  document.getElementById("intermediate").addEventListener('click',() => { Game.buildGrid(16,16,40); });
+  document.getElementById("advanced").addEventListener('click',() => { Game.buildGrid(16,30,99); });
+  document.getElementById("custom").addEventListener('click',() => { 
+    let rows = document.getElementById("rows") , cols = document.getElementById("cols") , bmbs = document.getElementById("bmbs");
+    let cells = rows.value * cols.value , cap = Math.floor(cells / 4);
+    //Limit the amount of bombs to 1/4th the amount of cells.
+    if (bmbs.value > cap) { bmbs.value = cap; }
+    Game.buildGrid(rows.value,cols.value,bmbs.value);
+  });
+  document.getElementById("bmbs").addEventListener('change',(e) => { 
+    let rows = document.getElementById("rows") , cols = document.getElementById("cols") , bmbs = e.target;
+    let cells = rows.value * cols.value , cap = Math.floor(cells / 4);
+    //Limit the amount of bombs to 1/4th the amount of cells.
+    if (bmbs.value > cap) { bmbs.value = cap; }
+  });
+});
+    </script>
+    <style>
+      body { background: #1f1f1f; color: #9e9e9e; }
+      table { background: #c0c0c0; border: 3px outset #ffffff; }
+      th, td { text-align: center; background: #c0c0c0; border: 3px inset #ffffff; color: #000000; }
+    </style>
+  </head>
+  <body>
+    <table>
+      <tr><td><span id="bombs"style="float: left">Bombs: 10</span><span id="timer" style="float: right">00:00:00.000</span></td></tr>
+      <tr><td id="gamecontainer"></td></tr>
+      <tr><td id="gamestate">Sweeping...</td></tr>
+    </table>
+  <button id="beginner">9x9 : 10</button>
+  <button id="intermediate">16x16 : 40</button>
+  <button id="advanced">16x30 : 99</button>
+  <br>
+  Custom (Max bomb limit of 1/4th the amount of cells):
+  <br> 
+  <input id="rows" type="number" value="30" size="4"> x <input id="cols" type="number" value="20" size="4"> Bombs: <input id="bmbs" type="number" value="145" size="4"> 
+  <button id="custom">Play!</button>
+  <br>
+  <input id="flagwin" type="checkbox"> Allow win by flagging all bombs successfully. (Must have same number of flags as bombs, extra flags won't make a win.)
+  </body>
+</html>
