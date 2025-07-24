@@ -7,10 +7,11 @@ const textColor = ["#707070","#0000ff","#008000","#ff0000","#000080","#800000","
 function RandInt(min,max) { return Math.floor(Math.random() * (max - min + 1) + min); }
 /* Info                        Number to AND/OR/XOR by
 ------------------------------------------------------
-bits 1-4 = bomb count (max 8)   (15 [Binary: 0001111])
-bit 5 = bomb                    (16 [Binary: 0010000])
-bit 6 = flagged                 (32 [Binary: 0100000])
-bit 7 = revealed                (64 [Binary: 1000000])
+bits 1-4 = bomb count (max 8)   (15  [Binary: 00001111])
+bit 5 = bomb                    (16  [Binary: 00010000])
+bit 6 = flagged                 (32  [Binary: 00100000])
+bit 7 = question                (64  [Binary: 01000000])
+bit 8 = revealed                (128 [Binary: 10000000])
 */
 class Minesweeper extends HTMLElement {
   constructor(ParentElement,Width = 9,Height = 9,Bombs = 10) {
@@ -47,18 +48,22 @@ class Minesweeper extends HTMLElement {
       //If it's a pointerup event...
       if (e.type == "pointerup") {
         //If not right click and cell is not revealed and cell is not flagged and we haven't lost yet and we haven't won yet... reveal cell.
-        if (!this._RClick && !(this._Grid[Cell] & 64) && !(this._Grid[Cell] & 32) && !this._Lost && !this._Won) { this._Reveal(X,Y); }
+        if (!this._RClick && !(this._Grid[Cell] & 128) && !(this._Grid[Cell] & 32) && !this._Lost && !this._Won) { this._Reveal(X,Y); }
 
         //If right click and cell is not revealed, and we haven't lost yet and we haven't won yet, toggle flagged...
-        else if (this._RClick && !(this._Grid[Cell] & 64) && !this._Lost && !this._Won) { 
-          //Binary XOR the cell value to toggle flagged or not
-          this._Grid[Cell] = this._Grid[Cell] ^ 32; 
+        else if (this._RClick && !(this._Grid[Cell] & 128) && !this._Lost && !this._Won) { 
+          //Binary XOR the cell value to toggle flagged or not (if it's not questioned)
+          if (!(this._Grid[Cell] & 64)) { this._Grid[Cell] = this._Grid[Cell] ^ 32; }
 
           //If we flagged it, add it to list...
           if (this._Grid[Cell] & 32) { this._FlagPositions.push(Cell); }
 
           //Else, We must've unflagged it... Remove it from list...
-          else { this._FlagPositions.splice(this._FlagPositions.indexOf(Cell),1); }
+          else {
+            this._FlagPositions.splice(this._FlagPositions.indexOf(Cell),1); 
+            //Toggle questioned (if allowed)
+            if (document.getElementById("flagmark").checked) { this._Grid[Cell] = this._Grid[Cell] ^ 64; }
+          }
 
           //Change bomb count text to reflect based on how many flags we used.
           document.getElementById("bombs").innerText = "Bombs: " + (this._BombPositions.length - this._FlagPositions.length);
@@ -75,12 +80,12 @@ class Minesweeper extends HTMLElement {
     //If cell coordinate is within bounds
     if ((x >= 0 && x < this._Rows) && (y >= 0 && y < this._Cols)) {
       //set some variables to make it easer to reference some stuff by name
-      let Cell = y * this._Rows + x , CellText = this._Grid[Cell] & 15 , CellBomb = this._Grid[Cell] & 16 , CellRevealed = this._Grid[Cell] & 64;
+      let Cell = y * this._Rows + x , CellText = this._Grid[Cell] & 15 , CellBomb = this._Grid[Cell] & 16 , CellRevealed = this._Grid[Cell] & 128;
 
       //If not revealed
       if (!CellRevealed) { 
-        //Binary OR it revealed, increase our reveal count
-        this._Grid[Cell] = this._Grid[Cell] | 64; 
+        //Binary OR it revealed (also remove question flag), increase our reveal count
+        this._Grid[Cell] = (this._Grid[Cell] | 128) & ~64;
         this._RevealCount++;
 
         //If we clicked a bomb...        
@@ -181,7 +186,7 @@ class Minesweeper extends HTMLElement {
     for (let x = 0; x < this._Rows; x++) {
       for (let y = 0; y < this._Cols; y++) {
         //Set some local variables to make it easier to reference stuff by a name
-        let Cell = this._Grid[y * this._Rows + x] , CellText = Cell & 15 , CellBomb = Cell & 16 , CellFlagged = Cell & 32 , CellRevealed = Cell & 64;
+        let Cell = this._Grid[y * this._Rows + x] , CellText = Cell & 15 , CellBomb = Cell & 16 , CellFlagged = Cell & 32 , CellQuestioned = Cell & 64 , CellRevealed = Cell & 128;
 
         //draw filled rectangle (red if bomb, dark grey if revealed, light grey if not revealed)
         this.DrawRect("f",(CellRevealed ? (CellBomb ? "red" : "#707070") : "#c0c0c0"),1,x * this._CellSize,y * this._CellSize,this._CellSize,this._CellSize)
@@ -199,6 +204,7 @@ class Minesweeper extends HTMLElement {
         }
         //Else if cell has been flagged (isn't revealed yet) draw the UTF flag
         else if (CellFlagged) { this.DrawText("n","black","14px sans-serif",x * this._CellSize + 6,y * this._CellSize + 2,"\u{1f6a9}"); }
+        else if (CellQuestioned) { this.DrawText("n","black","20px sans-serif",x * this._CellSize + 7,y * this._CellSize + 7,"?"); }
       }
     }
     //If we haven't lost yet, and theres only the bombs left unrevealed...
@@ -293,6 +299,8 @@ window.addEventListener('load',() => {
   <br> 
   <input id="rows" type="number" value="30" size="4"> x <input id="cols" type="number" value="20" size="4"> Bombs: <input id="bmbs" type="number" value="145" size="4"> 
   <button id="custom">Play!</button>
+  <br>
+  <input id="flagmark" type="checkbox" checked> Allow Marks (?)
   <br>
   <input id="flagwin" type="checkbox"> Allow win by flagging all bombs successfully. (Must have same number of flags as bombs, extra flags won't make a win.)
   </body>
