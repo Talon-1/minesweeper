@@ -116,7 +116,7 @@ class Minesweeper extends HTMLElement {
     document.getElementById("timer").innerText = `${hh}:${mm}:${ss}.${tt}`;
 
     //Request new animation frame
-    requestAnimationFrame(this.timer.bind(this));
+    if (!this._Won && !this._Lost) { requestAnimationFrame(this.timer.bind(this)); }
   }
   buildGrid(Width,Height,Bombs) {
     //Initialize "private" properties (they're not really private but we'll prefix with "_" to pretend)
