@@ -46,7 +46,7 @@ class Minesweeper extends HTMLElement {
       if (e.buttons == 2) { this._RClick = true; }
 
       //If it's a pointerup event...
-      if (e.type == "pointerup") {
+      if (e.type == "pointerup" && !this._PauseTime) {
         //If not right click and cell is not revealed and cell is not flagged and we haven't lost yet and we haven't won yet... reveal cell.
         if (!this._RClick && !(this._Grid[Cell] & 128) && !(this._Grid[Cell] & 32) && !this._Lost && !this._Won) { this._Reveal(X,Y); }
 
@@ -121,7 +121,21 @@ class Minesweeper extends HTMLElement {
     document.getElementById("timer").innerText = `${hh}:${mm}:${ss}.${tt}`;
 
     //Request new animation frame
-    if (!this._Won && !this._Lost) { requestAnimationFrame(this.timer.bind(this)); }
+    if (!this._Won && !this._Lost && !this._PauseTime) { requestAnimationFrame(this.timer.bind(this)); }
+  }
+  pause() {
+    if (this._StartTime) { 
+      if (!this._PauseTime) { 
+        this._PauseTime = new Date().getTime(); 
+        document.getElementById("gamestate").innerText = "Sleeping...";
+      }
+      else { 
+        this._StartTime += (new Date().getTime()) - this._PauseTime;
+        this._PauseTime = undefined;
+        document.getElementById("gamestate").innerText = "Sweeping...";
+        requestAnimationFrame(this.timer.bind(this));
+      }
+    }
   }
   buildGrid(Width,Height,Bombs) {
     //Initialize "private" properties (they're not really private but we'll prefix with "_" to pretend)
@@ -140,6 +154,7 @@ class Minesweeper extends HTMLElement {
     this._RevealCount = 0; //count of revealed cells
     this._TileCount = Width * Height; //total number of tiles
     this._Grid = new Array(this._TileCount).fill(0,0,this._TileCount); //Blank fill grid with 0's
+    this._PauseTime = undefined;
 
     //Randomly place bombs into the grid, loop until all bombs are placed.
     while (Bombs > 0) {
@@ -261,6 +276,7 @@ window.addEventListener('load',() => {
   let Game = new Minesweeper(document.getElementById("gamecontainer"),9,9,10);
 
   //define click handlers for starting new games
+  document.getElementById("gamestate").addEventListener('click',() => { Game.pause(); });
   document.getElementById("beginner").addEventListener('click',() => { Game.buildGrid(9,9,10); });
   document.getElementById("intermediate").addEventListener('click',() => { Game.buildGrid(16,16,40); });
   document.getElementById("advanced").addEventListener('click',() => { Game.buildGrid(16,30,99); });
