@@ -124,7 +124,7 @@ class Minesweeper extends HTMLElement {
     if (!this._Won && !this._Lost && !this._PauseTime) { requestAnimationFrame(this.timer.bind(this)); }
   }
   pause() {
-    if (this._StartTime) { 
+    if (!this._Won && !this._Lost && this._StartTime) { 
       if (!this._PauseTime) { 
         this._PauseTime = new Date().getTime(); 
         document.getElementById("gamestate").innerText = "Sleeping...";
