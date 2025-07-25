@@ -3,7 +3,7 @@
   <head>
     <script>
 const neighbors = [[-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]];
-const textColor = ["#707070","#0000ff","#008000","#ff0000","#000080","#800000","#008080","#000000","#808080"];
+const textColor = ["#919191","#0000ff","#008000","#ff0000","#000080","#800000","#008080","#000000","#808080"];
 function RandInt(min,max) { return Math.floor(Math.random() * (max - min + 1) + min); }
 /* Info                        Number to AND/OR/XOR by
 ------------------------------------------------------
@@ -204,7 +204,7 @@ class Minesweeper extends HTMLElement {
         let Cell = this._Grid[y * this._Rows + x] , CellText = Cell & 15 , CellBomb = Cell & 16 , CellFlagged = Cell & 32 , CellQuestioned = Cell & 64 , CellRevealed = Cell & 128;
 
         //draw filled rectangle (red if bomb, dark grey if revealed, light grey if not revealed)
-        this.DrawRect("f",(CellRevealed ? (CellBomb ? "red" : "#707070") : "#c0c0c0"),1,x * this._CellSize,y * this._CellSize,this._CellSize,this._CellSize)
+        this.DrawRect("f",(CellRevealed ? (CellBomb ? "red" : "#919191") : "#c0c0c0"),1,x * this._CellSize,y * this._CellSize,this._CellSize,this._CellSize)
 
         //draw a black border around the cell
         this.DrawRect("n","black",1,x * this._CellSize,y * this._CellSize,this._CellSize,this._CellSize)
