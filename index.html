@@ -75,7 +75,7 @@ class Minesweeper extends HTMLElement {
 
           //Else, We must've unflagged it... Remove it from list...
           else {
-            this._FlagPositions.splice(this._FlagPositions.indexOf(Cell),1); 
+            if (this._FlagPositions.indexOf(Cell) >= 0) { this._FlagPositions.splice(this._FlagPositions.indexOf(Cell),1); }
             //Toggle questioned (if allowed)
             if (document.getElementById("flagmark").checked) { this._Grid[Cell] = this._Grid[Cell] ^ 64; }
           }
@@ -219,13 +219,13 @@ class Minesweeper extends HTMLElement {
         let Cell = this._Grid[y * this._Rows + x] , CellText = Cell & 15 , CellBomb = Cell & 16 , CellFlagged = Cell & 32 , CellQuestioned = Cell & 64 , CellRevealed = Cell & 128;
 
         //draw filled rectangle (red if bomb, dark grey if revealed, light grey if not revealed)
-        this.DrawRect("f",(CellRevealed ? (CellBomb ? "red" : "#919191") : "#c0c0c0"),1,x * this._CellSize,y * this._CellSize,this._CellSize,this._CellSize)
+        this.DrawRect("f",(CellRevealed ? (CellBomb ? "red" : "#919191") : (CellBomb && CellFlagged && (this._Won || this._Lost) ? "#3582af" : (!CellBomb && CellFlagged && (this._Won || this._Lost) ? "#af3535" : "#c0c0c0"))),1,x * this._CellSize,y * this._CellSize,this._CellSize,this._CellSize)
 
         //draw a black border around the cell
         this.DrawRect("n","black",1,x * this._CellSize,y * this._CellSize,this._CellSize,this._CellSize)
         
         //If cell has been revealed (bit 7), or we lost, draw the contents
-        if (CellRevealed || this._Lost) {
+        if (CellRevealed || (this._Won || this._Lost)) {
           //if it's not a bomb, go ahead and draw it
           if (!CellBomb) { this.DrawText("n",(this._Lost && !CellRevealed && !CellText ? "#c0c0c0" : textColor[CellText]),"20px sans-serif",x * this._CellSize + 7,y * this._CellSize + 7,CellText); }
 
