@@ -2,40 +2,83 @@
 <html>
   <head>
     <script>
+const neighbors = [[-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]];
+const Themes = {
+  "Classic": {
+    "Table": ["#c0c0c0","#ffffff","#000000"], // background, in/outset, text
+    "Tile": ["#000000","#c0c0c0","#919191","#3582af","#af3535"], // outline, normal, revealed, flagbomb, flagnonbomb
+    "Text": ["#919191","#0000ff","#008000","#ff0000","#000080","#800000","#008080","#000000","#808080"], // text,1,2,3,4,5,6,7,8,9
+    "Symbols": { "Bomb": "\u{1f4a3}", "Flag": "\u{1f6a9}", "Play": "\u{23f5}", "Pause": "\u{23f5}" },
+  },
+  "Classic Dark": {
+    "Table": ["#464e56","#788088","#c8c3bc"],
+    "Tile": ["#1e262e","#4c545c","#384048","#3582af","#af3535"],
+    "Text": ["#384048","#7cc7ff","#66c266","#ff7788","#ee88ff","#ddaa22","#66cccc","#999999","#d0d8e0"],
+    "Symbols": { "Bomb": "\u{1f4a3}", "Flag": "\u{1f6a9}", "Play": "\u{23f5}", "Pause": "\u{23f8}" },
+  }
+}
+function QuickElement(name,attr,text,parent) {
+  let tmp = document.createElement(name) //Object.assign(,{textContent: text});
+  for (let key in attr) { tmp.setAttribute(key,attr[key]); }
+  if (text && text != '') { tmp.innerHTML = text; }
+  if (parent instanceof HTMLElement) { parent.appendChild(tmp); }
+  return tmp;
+}
 function isMobile() {
   let check = false;
   (function(a){if(/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(a)||/1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(a.substr(0,4))) check = true;})(navigator.userAgent||navigator.vendor||window.opera);
   return check;
 };
-const neighbors = [[-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]];
-const textColor = ["#919191","#0000ff","#008000","#ff0000","#000080","#800000","#008080","#000000","#808080"];
 function RandInt(min,max) { return Math.floor(Math.random() * (max - min + 1) + min); }
-/* Info                        Number to AND/OR/XOR by
-
-------------------------------------------------------
+/* Info                         Number to AND/OR/XOR by
+-------------------------------------------------------
 bits 1-4 = bomb count (max 8)   (15  [Binary: 00001111])
 bit 5 = bomb                    (16  [Binary: 00010000])
 bit 6 = flagged                 (32  [Binary: 00100000])
 bit 7 = question                (64  [Binary: 01000000])
 bit 8 = revealed                (128 [Binary: 10000000])
 */
+
 class Minesweeper extends HTMLElement {
   constructor(ParentElement,Width = 9,Height = 9,Bombs = 10) {
     super(); //required before any use of "this" when extending an html element.
     this._CellSize = 25; //The size of each cell "box" in pixels
-    this._Canvas = document.createElement('canvas'); //Create canvas element
-    this._Canvas.style.border = "1px solid black"; //give it a black border
+
+    //Build UI
+    this._Theme = Themes[(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? "Classic Dark" : "Classic")];
+    this._Table = QuickElement('table',{style: `background: ${this._Theme.Table[0]}; border: 3px outset ${this._Theme.Table[1]}; color: ${this._Theme.Table[2]}`},"",this);
+      this._TopTR = QuickElement('tr',{},"",this._Table);
+        this._TopTD = QuickElement('td',{style: `text-align: center; background: ${this._Theme.Table[0]}; border: 3px inset ${this._Theme.Table[1]};`},"",this._TopTR);
+        this._BombSpan = QuickElement('span',{style: "float: left"},"Bombs: 0",this._TopTD);
+        this._TimerSpan = QuickElement('span',{style: "float: right"},"00:00:00.000",this._TopTD);
+        this._PauseSpan = QuickElement('span',{style: "user-select: none; cursor: pointer; padding-right: 4px; float: right"},this._Theme.Symbols["Play"],this._TopTD);
+
+      this._MidTR = QuickElement('tr',{},"",this._Table);
+        this._MidTD = QuickElement('td',{style: `text-align: center; background: ${this._Theme.Table[0]}; border: 3px inset ${this._Theme.Table[1]};`},"",this._MidTR);
+        this._Canvas = QuickElement('canvas',{style: `border: 1px solid ${this._Theme.Tile[0]}`},"",this._MidTD)
+
+      this._BotTR = QuickElement('tr',{},"",this._Table);
+        this._BotTD = QuickElement('td',{style: `text-align: center; background: ${this._Theme.Table[0]}; border: 3px inset ${this._Theme.Table[1]};`},"",this._BotTR);
+        this._StatusSpan = QuickElement('span',{},"Sweeping...",this._BotTD);
 
     // Callbacks
     this._Canvas.addEventListener('pointerdown',this._HandleUserInput.bind(this)); //Needed to log buttons as pointerup doesn't show buttons, they're released...
     this._Canvas.addEventListener('pointerup',this._HandleUserInput.bind(this));
+    this._PauseSpan.addEventListener('click',() =>{ this.pause() });
 
-    // Embed canvas into this element, embed this element into passed "parent" element
-    this.appendChild(this._Canvas);
+    // Embed this element into passed "parent" element
     if (ParentElement instanceof HTMLElement) { ParentElement.appendChild(this); }
 
     // Other initialization
     this.buildGrid(Width,Height,Bombs);    
+  }
+  _SetTheme(theme) {
+    if (Themes.hasOwnProperty(theme)) { 
+      this._Theme = Themes[theme];
+      this._Table.style = `background: ${this._Theme.Table[0]}; border: 3px outset ${this._Theme.Table[1]}; color: ${this._Theme.Table[2]}`;
+      this._TopTD.style = this._MidTD.style = this._BotTD.style = `text-align: center; background: ${this._Theme.Table[0]}; border: 3px inset ${this._Theme.Table[1]};`;
+      this.Render();
+    }
   }
   _HandleUserInput(e) { 
     if (/^pointer/.test(e.type)) {
@@ -81,7 +124,7 @@ class Minesweeper extends HTMLElement {
           }
 
           //Change bomb count text to reflect based on how many flags we used.
-          document.getElementById("bombs").innerText = "Bombs: " + (this._BombPositions.length - this._FlagPositions.length);
+          this._BombSpan.innerText = "Bombs: " + (this._BombPositions.length - this._FlagPositions.length);
         }
         //Unset the right click boolean
         this._RClick = false;
@@ -108,7 +151,7 @@ class Minesweeper extends HTMLElement {
           //set loser boolean to true lol
           this._Lost = true;
           //Show we lost
-          document.getElementById("gamestate").innerText = "You Lose!";
+          this._StatusSpan.innerText = "You Lose!";
         }
 
         //Else If this not a bomb and is a blank cell (no bombs around it)
@@ -133,7 +176,7 @@ class Minesweeper extends HTMLElement {
     let Ctime = Math.floor(diff / 1000) , hh = Math.floor(Ctime / 3600).toString().padStart(2,0) , mm = Math.floor((Ctime % 3600) / 60).toString().padStart(2,0) , ss = Math.floor(Ctime % 60).toString().padStart(2,0) , tt = Math.floor(diff % 1000).toString().padStart(3,0);
 
     //Update the timer element
-    document.getElementById("timer").innerText = `${hh}:${mm}:${ss}.${tt}`;
+    this._TimerSpan.innerText = `${hh}:${mm}:${ss}.${tt}`;
 
     //Request new animation frame
     if (!this._Won && !this._Lost && !this._PauseTime) { requestAnimationFrame(this.timer.bind(this)); }
@@ -141,13 +184,15 @@ class Minesweeper extends HTMLElement {
   pause() {
     if (!this._Won && !this._Lost && this._StartTime) { 
       if (!this._PauseTime) { 
-        this._PauseTime = new Date().getTime(); 
-        document.getElementById("gamestate").innerText = "Sleeping...";
+        this._PauseTime = new Date().getTime();
+        this._PauseSpan.innerText = this._Theme.Symbols["Pause"];
+        this._StatusSpan.innerText = "Sleeping...";
       }
       else { 
         this._StartTime += (new Date().getTime()) - this._PauseTime;
         this._PauseTime = undefined;
-        document.getElementById("gamestate").innerText = "Sweeping...";
+        this._PauseSpan.innerText = this._Theme.Symbols["Play"];
+        this._StatusSpan.innerText = "Sweeping...";
         requestAnimationFrame(this.timer.bind(this));
       }
     }
@@ -171,7 +216,9 @@ class Minesweeper extends HTMLElement {
     this._Grid = new Array(this._TileCount).fill(0,0,this._TileCount); //Blank fill grid with 0's
     this._PauseTime = undefined;
 
+
     //Randomly place bombs into the grid, loop until all bombs are placed.
+    Bombs = (Bombs <= this._TileCount ? Bombs : this._TileCount); // Make sure bombs don't exceed total tiles, avoid runaway loop.
     while (Bombs > 0) {
       let pos = RandInt(0,this._TileCount - 1);
       if (!this._Grid[pos]) { this._Grid[pos] = 16; this._BombPositions.push(pos); Bombs--; }
@@ -201,8 +248,8 @@ class Minesweeper extends HTMLElement {
     //for (let x = 0; x < this._Grid.length; x+= this._Rows) { console.log(this._Grid.slice(x,x+this._Rows)); }
 
     //Set the text of some game areas
-    document.getElementById("bombs").innerText = "Bombs: " + (this._BombPositions.length - this._FlagPositions.length);
-    document.getElementById("gamestate").innerText = "Sweeping...";
+    this._BombSpan.innerText = "Bombs: " + (this._BombPositions.length - this._FlagPositions.length);
+    this._StatusSpan.innerText = "Sweeping...";
 
     //Draw the grid!
     this.Render();
@@ -210,7 +257,7 @@ class Minesweeper extends HTMLElement {
   }
   Render() {
     //Clear the canvas
-    this.DrawClear("#c0c0c0");
+    this.DrawClear(this._Theme.Table[1]);
 
     //Iterate over all grid cells
     for (let x = 0; x < this._Rows; x++) {
@@ -218,27 +265,27 @@ class Minesweeper extends HTMLElement {
         //Set some local variables to make it easier to reference stuff by a name
         let Cell = this._Grid[y * this._Rows + x] , CellText = Cell & 15 , CellBomb = Cell & 16 , CellFlagged = Cell & 32 , CellQuestioned = Cell & 64 , CellRevealed = Cell & 128;
 
-        //draw filled rectangle (red if bomb, dark grey if revealed, light grey if not revealed)
-        this.DrawRect("f",(CellRevealed ? (CellBomb ? "red" : "#919191") : (CellBomb && CellFlagged && (this._Won || this._Lost) ? "#3582af" : (!CellBomb && CellFlagged && (this._Won || this._Lost) ? "#af3535" : "#c0c0c0"))),1,x * this._CellSize,y * this._CellSize,this._CellSize,this._CellSize)
+        //draw filled rectangle (red if bomb, dark grey if revealed, light grey if not revealed)        
+        this.DrawRect("f",(CellRevealed ? (CellBomb ? "red" : this._Theme.Tile[2]) : (CellBomb && CellFlagged && (this._Won || this._Lost) ? this._Theme.Tile[3] : (!CellBomb && CellFlagged && (this._Won || this._Lost) ? this._Theme.Tile[4] : this._Theme.Tile[1]))),1,x * this._CellSize,y * this._CellSize,this._CellSize,this._CellSize)
 
         //draw a black border around the cell
-        this.DrawRect("n","black",1,x * this._CellSize,y * this._CellSize,this._CellSize,this._CellSize)
+        this.DrawRect("n",this._Theme.Tile[0],1,x * this._CellSize,y * this._CellSize,this._CellSize,this._CellSize)
         
         //If cell has been revealed (bit 7), or we lost, draw the contents
         if (CellRevealed || (this._Won || this._Lost)) {
           //if it's not a bomb, go ahead and draw it
-          if (!CellBomb) { this.DrawText("n",(this._Lost && !CellRevealed && !CellText ? "#c0c0c0" : textColor[CellText]),"20px sans-serif",x * this._CellSize + 7,y * this._CellSize + 7,CellText); }
+          if (!CellBomb) { this.DrawText("n",(this._Lost && !CellRevealed && !CellText ? this._Theme.Tile[1] : this._Theme.Text[CellText]),"20px sans-serif",x * this._CellSize + 7,y * this._CellSize + 7,CellText); }
 
           //else if it is a bomb, draw the UTF bomb instead of the number
-          else { this.DrawText("n","black","14px sans-serif",x * this._CellSize + 6,y * this._CellSize + 2,"\u{1f4a3}"); }
+          else { this.DrawText("n","black","14px sans-serif",x * this._CellSize + 6,y * this._CellSize + 2,this._Theme.Symbols["Bomb"]); }
         }
         //Else if cell has been flagged (isn't revealed yet) draw the UTF flag
-        else if (CellFlagged) { this.DrawText("n","black","14px sans-serif",x * this._CellSize + 6,y * this._CellSize + 2,"\u{1f6a9}"); }
+        else if (CellFlagged) { this.DrawText("n","black","14px sans-serif",x * this._CellSize + 6,y * this._CellSize + 2,this._Theme.Symbols["Flag"]); }
         else if (CellQuestioned) { this.DrawText("n","black","20px sans-serif",x * this._CellSize + 7,y * this._CellSize + 7,"?"); }
       }
     }
     //If we haven't lost yet, and theres only the bombs left unrevealed...
-    if (!this._Lost && this._TileCount - this._RevealCount == this._BombPositions.length) { this._Won = true; document.getElementById("gamestate").innerText = "You Win!"; }
+    if (!this._Lost && this._TileCount - this._RevealCount == this._BombPositions.length) { this._Won = true; this._StatusSpan.innerText = "You Win!"; }
 
     //Else if flagwin is enabled, we haven't lost yet, and we dropped as many flags as there are bombs
     else if (document.getElementById("flagwin").checked && !this._Lost && this._FlagPositions.length == this._BombPositions.length) {
@@ -247,7 +294,7 @@ class Minesweeper extends HTMLElement {
       this._FlagPositions.forEach((flag) => { if (this._BombPositions.includes(flag)) { SuccessfulFlags++; } });
 
       //If we flagged all the bombs correctly, WIN!
-      if (SuccessfulFlags == this._BombPositions.length) { this._Won = true; document.getElementById("gamestate").innerText = "You Win!"; }
+      if (SuccessfulFlags == this._BombPositions.length) { this._Won = true; this._StatusSpan.innerText = "You Win!"; }
     }
   }
 
@@ -289,13 +336,22 @@ window.addEventListener('load',() => {
 
   //Launch new game element!
   let Game = new Minesweeper(document.getElementById("gamecontainer"),9,9,10);
+  window.addEventListener("beforeunload", (e) => {
+    if (Game._StartTime) {
+      var confirmationMessage = 'You have a game in progress. If you leave this game will be lost.';
+      (e || window.event).returnValue = confirmationMessage; //Gecko + IE
+      return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
+    }
+  });
+
   if (isMobile()) { document.getElementById("mobile").checked = true; }
+  document.getElementById("theme").value = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? "Classic Dark" : "Classic");
+  document.getElementById("theme").addEventListener('change',(e) => { Game._SetTheme(e.target.value); });
 
   //define click handlers for starting new games
-  document.getElementById("gamestate").addEventListener('click',() => { Game.pause(); });
   document.getElementById("beginner").addEventListener('click',() => { Game.buildGrid(9,9,10); });
   document.getElementById("intermediate").addEventListener('click',() => { Game.buildGrid(16,16,40); });
-  document.getElementById("advanced").addEventListener('click',() => { Game.buildGrid(16,30,99); });
+  document.getElementById("advanced").addEventListener('click',() => { Game.buildGrid(30,16,99); });
   document.getElementById("custom").addEventListener('click',() => { 
     let rows = document.getElementById("rows") , cols = document.getElementById("cols") , bmbs = document.getElementById("bmbs");
     let cells = rows.value * cols.value , cap = Math.floor(cells / 4);
@@ -313,24 +369,24 @@ window.addEventListener('load',() => {
     </script>
     <style>
       body { background: #1f1f1f; color: #9e9e9e; }
-      table { background: #c0c0c0; border: 3px outset #ffffff; }
-      th, td { text-align: center; background: #c0c0c0; border: 3px inset #ffffff; color: #000000; }
     </style>
   </head>
   <body>
-    <table>
-      <tr><td><span id="bombs" style="float: left">Bombs: 10</span><span id="timer" style="float: right">00:00:00.000</span></td></tr>
-      <tr><td id="gamecontainer"></td></tr>
-      <tr><td id="gamestate">Sweeping...</td></tr>
-    </table>
+  <div id="gamecontainer"></div>
   <button id="beginner">9x9 : 10</button>
   <button id="intermediate">16x16 : 40</button>
-  <button id="advanced">16x30 : 99</button>
+  <button id="advanced">30x16 : 99</button>
   <br>
   Custom (Max bomb limit of 1/4th the amount of cells):
   <br> 
   <input id="rows" type="number" value="30" size="4"> x <input id="cols" type="number" value="20" size="4"> Bombs: <input id="bmbs" type="number" value="145" size="4"> 
   <button id="custom">Play!</button>
+  <br>
+  Theme: 
+  <select id="theme">
+    <option value="Classic">Classic</option>
+    <option value="Classic Dark">Classic Dark</option>
+  </select>
   <br>
   <input id="flagmark" type="checkbox" checked> Allow Marks (?)
   <br>
