@@ -44,6 +44,13 @@ class Minesweeper extends HTMLElement {
     super(); //required before any use of "this" when extending an html element.
     this._CellSize = 25; //The size of each cell "box" in pixels
 
+    //Build Mixer
+    this._Sounds = {
+      "Clock": QuickElement('audio',{'src': "clock.webm"}),
+      "Win": QuickElement('audio',{'src': "win.webm"}),
+      "Lose": QuickElement('audio',{'src': "lose.webm"})
+    }
+
     //Build UI
     this._Theme = Themes[(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? "Classic Dark" : "Classic")];
     this._Table = QuickElement('table',{style: `background: ${this._Theme.Table[0]}; border: 3px outset ${this._Theme.Table[1]}; color: ${this._Theme.Table[2]}`},"",this);
@@ -147,12 +154,7 @@ class Minesweeper extends HTMLElement {
         this._RevealCount++;
 
         //If we clicked a bomb...        
-        if (CellBomb) {
-          //set loser boolean to true lol
-          this._Lost = true;
-          //Show we lost
-          this._StatusSpan.innerText = "You Lose!";
-        }
+        if (CellBomb) { this._endgame(false); }
 
         //Else If this not a bomb and is a blank cell (no bombs around it)
         else if (!CellBomb && !CellText) { 
@@ -162,9 +164,21 @@ class Minesweeper extends HTMLElement {
       }
     }
   }
+  _endgame(won) {
+    if (won) {
+      if (!this._Won && document.getElementById("sounds").checked) { this._Sounds["Win"].play(); }
+      this._Won = true;
+      this._StatusSpan.innerText = "You Win!"; 
+    }
+    else {
+      if (!this._Lost && document.getElementById("sounds").checked) { this._Sounds["Lose"].play(); }
+      this._Lost = true;
+      this._StatusSpan.innerText = "You Lose!";
+    }
+  }
   timer(ctime) {
     //If game started and no logged start time, set it
-    if (this._Started && !this._StartTime) { this._StartTime = ctime; }
+    if (this._Started && !this._StartTime) { this._StartTime = ctime; this._WatchSecs = "00"; }
 
     //If game ended and no end time, set it
     if ((this._Won || this._Lost) && !this._EndTime) { this._EndTime = ctime; }
@@ -177,6 +191,9 @@ class Minesweeper extends HTMLElement {
 
     //Update the timer element
     this._TimerSpan.innerText = `${hh}:${mm}:${ss}.${tt}`;
+
+    if (this._WatchSecs != ss && document.getElementById("sounds").checked) { this._Sounds["Clock"].play(); }
+    this._WatchSecs = ss;
 
     //Request new animation frame
     if (!this._Won && !this._Lost && !this._PauseTime) { requestAnimationFrame(this.timer.bind(this)); }
@@ -285,7 +302,7 @@ class Minesweeper extends HTMLElement {
       }
     }
     //If we haven't lost yet, and theres only the bombs left unrevealed...
-    if (!this._Lost && this._TileCount - this._RevealCount == this._BombPositions.length) { this._Won = true; this._StatusSpan.innerText = "You Win!"; }
+    if (!this._Lost && this._TileCount - this._RevealCount == this._BombPositions.length) { this._endgame(true); }
 
     //Else if flagwin is enabled, we haven't lost yet, and we dropped as many flags as there are bombs
     else if (document.getElementById("flagwin").checked && !this._Lost && this._FlagPositions.length == this._BombPositions.length) {
@@ -294,7 +311,7 @@ class Minesweeper extends HTMLElement {
       this._FlagPositions.forEach((flag) => { if (this._BombPositions.includes(flag)) { SuccessfulFlags++; } });
 
       //If we flagged all the bombs correctly, WIN!
-      if (SuccessfulFlags == this._BombPositions.length) { this._Won = true; this._StatusSpan.innerText = "You Win!"; }
+      if (SuccessfulFlags == this._BombPositions.length) { this._endgame(true); }
     }
   }
 
@@ -337,7 +354,7 @@ window.addEventListener('load',() => {
   //Launch new game element!
   let Game = new Minesweeper(document.getElementById("gamecontainer"),9,9,10);
   window.addEventListener("beforeunload", (e) => {
-    if (Game._StartTime) {
+    if (Game._StartTime && !Game._Won && !Game._Lost) {
       var confirmationMessage = 'You have a game in progress. If you leave this game will be lost.';
       (e || window.event).returnValue = confirmationMessage; //Gecko + IE
       return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
@@ -351,7 +368,7 @@ window.addEventListener('load',() => {
   //define click handlers for starting new games
   document.getElementById("beginner").addEventListener('click',() => { Game.buildGrid(9,9,10); });
   document.getElementById("intermediate").addEventListener('click',() => { Game.buildGrid(16,16,40); });
-  document.getElementById("advanced").addEventListener('click',() => { Game.buildGrid(30,16,99); });
+  document.getElementById("expert").addEventListener('click',() => { Game.buildGrid(30,16,99); });
   document.getElementById("custom").addEventListener('click',() => { 
     let rows = document.getElementById("rows") , cols = document.getElementById("cols") , bmbs = document.getElementById("bmbs");
     let cells = rows.value * cols.value , cap = Math.floor(cells / 4);
@@ -375,7 +392,7 @@ window.addEventListener('load',() => {
   <div id="gamecontainer"></div>
   <button id="beginner">9x9 : 10</button>
   <button id="intermediate">16x16 : 40</button>
-  <button id="advanced">30x16 : 99</button>
+  <button id="expert">30x16 : 99</button>
   <br>
   Custom (Max bomb limit of 1/4th the amount of cells):
   <br> 
@@ -387,6 +404,8 @@ window.addEventListener('load',() => {
     <option value="Classic">Classic</option>
     <option value="Classic Dark">Classic Dark</option>
   </select>
+  <br>
+  <input id="sounds" type="checkbox"> Enable Sounds
   <br>
   <input id="flagmark" type="checkbox" checked> Allow Marks (?)
   <br>
