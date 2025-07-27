@@ -123,6 +123,7 @@ class Minesweeper extends HTMLElement {
         this._BotTD = QuickElement('td',{style: `text-align: center; background: ${this._Theme.Table[0]}; border: 3px inset ${this._Theme.Table[1]};`},"",this._BotTR);
         this._StatusSpan = QuickElement('span',{},"Sweeping...",this._BotTD);
         this._BestDiv = QuickElement('div',{style:"text-align: left;"},"",this._BotTD);
+        this._ScoreDiv = QuickElement('div',{style:"text-align: left;"},"",this._BotTD);
 
     // Callbacks
     this._Canvas.addEventListener('pointerdown',this._HandleUserInput.bind(this)); //Needed to log buttons as pointerup doesn't show buttons, they're released...
@@ -171,7 +172,7 @@ class Minesweeper extends HTMLElement {
         if (e.buttons) { this._RClick = true; this._IgnoreNextRelease = true; }
         else if (this._IgnoreNextRelease) { this._IgnoreNextRelease = false; return; }
         //If not right click and cell is not revealed and cell is not flagged and we haven't lost yet and we haven't won yet... reveal cell.
-        if (!this._RClick && !(this._Grid[Cell] & 128) && !(this._Grid[Cell] & 32) && !this._Lost && !this._Won) { this._Reveal(X,Y); }
+        if (!this._RClick && !(this._Grid[Cell] & 128) && !(this._Grid[Cell] & 32) && !this._Lost && !this._Won) { this._Clicks++; this._Reveal(X,Y); }
 
         //If right click and cell is not revealed, and we haven't lost yet and we haven't won yet, toggle flagged...
         else if (this._RClick && !(this._Grid[Cell] & 128) && !this._Lost && !this._Won) { 
@@ -193,7 +194,6 @@ class Minesweeper extends HTMLElement {
         }
         //Unset the right click boolean
         this._RClick = false;
-        this._Clicks++;
 
         //Draw the grid!
         this.Render();
@@ -220,6 +220,30 @@ class Minesweeper extends HTMLElement {
           //Iterate over the 8 surrounding cells within a 3x3 and reveal those (the 9th is the center, the one we revealed!)
           neighbors.forEach((neighbor) => { this._Reveal(x + neighbor[0],y + neighbor[1]); });
         }
+      }
+    }
+  }
+  _ThreeBV() {
+    let clicks = 0;
+    //Expose all blank clusters in the minimum amount of clicks
+    while (this._Grid3.indexOf(0) > -1) {
+      let Cell = this._Grid3.indexOf(0) , y = Math.floor(Cell / this._Rows) , x = Cell % this._Rows;
+      clicks++;
+      this._ThreeBVReveal(x,y);
+    }
+    //Count remaining tiles left that are NOT a bomb as 1 click
+    for (let x = 0; x < this._Grid.length; x++) { 
+      let CellBomb = this._Grid3[x] & 16 , CellRevealed = this._Grid3[x] & 128;
+      if (!CellBomb && !CellRevealed) { clicks++; }
+    }
+    this._WinClicks = clicks;
+  }
+  _ThreeBVReveal(x,y) {
+    if ((x >= 0 && x < this._Rows) && (y >= 0 && y < this._Cols)) {
+      let Cell = y * this._Rows + x , CellText = this._Grid3[Cell] & 15 , CellRevealed = this._Grid3[Cell] & 128;
+      if (!CellRevealed) { 
+        this._Grid3[Cell] = this._Grid3[Cell] | 128; //reveal it
+        if (!CellText) { neighbors.forEach((neighbor) => { this._ThreeBVReveal(x + neighbor[0],y + neighbor[1]); }); }
       }
     }
   }
@@ -264,6 +288,7 @@ class Minesweeper extends HTMLElement {
         let diff = this._Scores.Expert.Time , Ctime = diff / 1000 , hh = Math.floor(Ctime / 3600).toString().padStart(2,0) , mm = Math.floor((Ctime % 3600) / 60).toString().padStart(2,0) , ss = Math.floor(Ctime % 60).toString().padStart(2,0) , tt = Math.floor(diff % 1000).toString().padStart(3,0);
         this._BestDiv.innerHTML = `<hr> Best: ${this._Scores.Expert.Name} <br> Time: ${hh}:${mm}:${ss}.${tt} <br> Clicks: ${this._Scores.Expert.Clicks}`;
       }
+      this._ScoreDiv.innerHTML = `<hr> 3BV: ${this._WinClicks} <br> Clicks: ${this._Clicks} <br> Efficiency: ${(this._Won ? (this._WinClicks / this._Clicks * 100).toFixed(0) + "%" : "...")}`;
   }
   timer(ctime) {
     //If game started and no logged start time, set it
@@ -351,12 +376,15 @@ class Minesweeper extends HTMLElement {
         this._Grid[x] = CloseBombs; 
       }
     }
+    this._Grid3 = this._Grid.slice(0);
+    this._ThreeBV();
     //Dirty cheat! Uncomment to see the grid array in your console for easy wins!
     //for (let x = 0; x < this._Grid.length; x+= this._Rows) { console.log(this._Grid.slice(x,x+this._Rows)); }
 
     //Set the text of some game areas
     this._BombSpan.innerText = "Bombs: " + (this._BombPositions.length - this._FlagPositions.length);
     this._StatusSpan.innerText = "Sweeping...";
+    this._ScoreDiv.innerHTML = "";
 
     //Draw the grid!
     this.Render();
