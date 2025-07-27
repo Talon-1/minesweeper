@@ -176,6 +176,7 @@ class Minesweeper extends HTMLElement {
 
         //If right click and cell is not revealed, and we haven't lost yet and we haven't won yet, toggle flagged...
         else if (this._RClick && !(this._Grid[Cell] & 128) && !this._Lost && !this._Won) { 
+          this._Clicks++;
           //Binary XOR the cell value to toggle flagged or not (if it's not questioned)
           if (!(this._Grid[Cell] & 64)) { this._Grid[Cell] = this._Grid[Cell] ^ 32; }
 
@@ -259,7 +260,6 @@ class Minesweeper extends HTMLElement {
         else if (this._Rows == 30 && this._Cols == 16 && this._BombPositions.length == 99) { scoretype = "Expert"; }
         if (scoretype) {
           if (diff < this._Scores[scoretype].Time) {
-            console.log("New best!");
             let best = prompt("New Best Score! Enter your name:", "");
             if (best == null || best == "") { best = "Anonymous" } 
             this._Scores[scoretype].Name = best; 
@@ -276,19 +276,23 @@ class Minesweeper extends HTMLElement {
       this._Lost = true;
       this._StatusSpan.innerText = "You Lose!";
     }
-      if (this._Rows == 9 && this._Cols == 9 && this._BombPositions.length == 10) {
-        let diff = this._Scores.Beginner.Time , Ctime = diff / 1000 , hh = Math.floor(Ctime / 3600).toString().padStart(2,0) , mm = Math.floor((Ctime % 3600) / 60).toString().padStart(2,0) , ss = Math.floor(Ctime % 60).toString().padStart(2,0) , tt = Math.floor(diff % 1000).toString().padStart(3,0);
-        this._BestDiv.innerHTML = `<hr> Best: ${this._Scores.Beginner.Name} <br> Time: ${hh}:${mm}:${ss}.${tt} <br> Clicks: ${this._Scores.Beginner.Clicks}`;
-      }
-      else if (this._Rows == 16 && this._Cols == 16 && this._BombPositions.length == 40) {
-        let diff = this._Scores.Intermediate.Time , Ctime = diff / 1000 , hh = Math.floor(Ctime / 3600).toString().padStart(2,0) , mm = Math.floor((Ctime % 3600) / 60).toString().padStart(2,0) , ss = Math.floor(Ctime % 60).toString().padStart(2,0) , tt = Math.floor(diff % 1000).toString().padStart(3,0);
-        this._BestDiv.innerHTML = `<hr> Best: ${this._Scores.Intermediate.Name} <br> Time: ${hh}:${mm}:${ss}.${tt} <br> Clicks: ${this._Scores.Intermediate.Clicks}`;
-      }
-      else if (this._Rows == 30 && this._Cols == 16 && this._BombPositions.length == 99) {
-        let diff = this._Scores.Expert.Time , Ctime = diff / 1000 , hh = Math.floor(Ctime / 3600).toString().padStart(2,0) , mm = Math.floor((Ctime % 3600) / 60).toString().padStart(2,0) , ss = Math.floor(Ctime % 60).toString().padStart(2,0) , tt = Math.floor(diff % 1000).toString().padStart(3,0);
-        this._BestDiv.innerHTML = `<hr> Best: ${this._Scores.Expert.Name} <br> Time: ${hh}:${mm}:${ss}.${tt} <br> Clicks: ${this._Scores.Expert.Clicks}`;
-      }
-      this._ScoreDiv.innerHTML = `<hr> 3BV: ${this._WinClicks} <br> Clicks: ${this._Clicks} <br> Efficiency: ${(this._Won ? (this._WinClicks / this._Clicks * 100).toFixed(0) + "%" : "...")}`;
+    //If this is a beginner game show the top score for that type
+    if (this._Rows == 9 && this._Cols == 9 && this._BombPositions.length == 10) {
+      let diff = this._Scores.Beginner.Time , Ctime = diff / 1000 , hh = Math.floor(Ctime / 3600).toString().padStart(2,0) , mm = Math.floor((Ctime % 3600) / 60).toString().padStart(2,0) , ss = Math.floor(Ctime % 60).toString().padStart(2,0) , tt = Math.floor(diff % 1000).toString().padStart(3,0);
+      this._BestDiv.innerHTML = `<hr> Best: ${this._Scores.Beginner.Name} <br> Time: ${hh}:${mm}:${ss}.${tt} <br> Clicks: ${this._Scores.Beginner.Clicks}`;
+    }
+    //If this is a intermediate game show the top score for that type
+    else if (this._Rows == 16 && this._Cols == 16 && this._BombPositions.length == 40) {
+      let diff = this._Scores.Intermediate.Time , Ctime = diff / 1000 , hh = Math.floor(Ctime / 3600).toString().padStart(2,0) , mm = Math.floor((Ctime % 3600) / 60).toString().padStart(2,0) , ss = Math.floor(Ctime % 60).toString().padStart(2,0) , tt = Math.floor(diff % 1000).toString().padStart(3,0);
+      this._BestDiv.innerHTML = `<hr> Best: ${this._Scores.Intermediate.Name} <br> Time: ${hh}:${mm}:${ss}.${tt} <br> Clicks: ${this._Scores.Intermediate.Clicks}`;
+    }
+    //If this is a expert game show the top score for that type
+    else if (this._Rows == 30 && this._Cols == 16 && this._BombPositions.length == 99) {
+      let diff = this._Scores.Expert.Time , Ctime = diff / 1000 , hh = Math.floor(Ctime / 3600).toString().padStart(2,0) , mm = Math.floor((Ctime % 3600) / 60).toString().padStart(2,0) , ss = Math.floor(Ctime % 60).toString().padStart(2,0) , tt = Math.floor(diff % 1000).toString().padStart(3,0);
+      this._BestDiv.innerHTML = `<hr> Best: ${this._Scores.Expert.Name} <br> Time: ${hh}:${mm}:${ss}.${tt} <br> Clicks: ${this._Scores.Expert.Clicks}`;
+    }
+    //Show individual score stats on game end
+    this._ScoreDiv.innerHTML = `<hr> 3BV: ${this._WinClicks} <br> Clicks: ${this._Clicks} <br> Efficiency: ${(this._Won ? (this._WinClicks / this._Clicks * 100).toFixed(0) + "%" : "...")}`;
   }
   timer(ctime) {
     //If game started and no logged start time, set it
@@ -551,7 +555,7 @@ window.addEventListener('load',() => {
   <hr>
   <h3>Info</h3>
   3VB is a computation by figuring the least amount of clicks to solve the board (without flags).
-  <p>Clicks represents the amount of times you clicked to reveal a cell (which does not count flags or questions)</p>
+  <p>Clicks represents the amount of times you clicked to flag/mark/unmark/reveal an unrevealed cell</p>
   <p>Efficiency is 3BV divided by your number of reavealing clicks, but is only computed on a game won.</p>
   </body>
 </html>
